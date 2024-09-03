@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="icon.ico" rel="icon" alt="Icon" style="width: 49px; height: 49px; border-radius: 50%;"/>
+    <title>SmartBin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e0f2f1;
+            color: #004d40;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #00796b;
+            color: #ffffff;
+            padding: 1rem;
+            display: flex;
+            text-align: center;
+            height: 70px;
+            width: 100%;
+            position: relative;
+             box-sizing: border-box; 
+        }
+
+        header img {
+            width: 49px;
+            height: 49px;
+            border-radius: 50%;
+            position: absolute; /* Allows positioning the icon to the far left */
+            left: 0.1rem; /* Adjust as needed */
+            top: 0.5rem;
+        }
+
+        header h1 {
+            margin: 0;
+            margin-left: 0.8px; /* Adjust based on the width of the image and desired spacing */
+            text-align: center;
+            flex: 1;
+            font-size: 1.5rem; /* Responsive font size */
+            word-wrap: break-word; /* Break long words for better readability */
+        }
+        .container {
+            width: 90%;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .chart-container {
+            margin-top: 2rem;
+            position: relative;
+            height: 400px; /* Fixed height for the chart */
+        }
+        .chart-title {
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .controls {
+            display: flex;
+            align-items: center;
+            flex-direction: column; /* Stack controls vertically on small screens */
+            justify-content: center;
+            margin-bottom: 2rem;
+            gap: 1rem;
+        }
+        .controls input, .controls button {
+            padding: 0.5rem;
+            font-size: 1rem;
+            text-align: center;
+            width: 50%; /* Full width for better touch interaction */
+    max-width: 300px; /* Limit width for larger screens */
+        }
+    </style>
+</head>
+<body>
+    <header>
+       <img src="icon.ico" rel="icon" alt="Icon" style="width: 49px; height: 49px;"/>
+        <h1>Sensor Data Dashboard</h1> 
+    </header>
+    <div class="container">
+        <div class="controls">
+            <input type="date" id="datePicker" />
+            <button id="loadData">Load Data</button>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">Gas sensor readings</div>
+            <canvas id="sensor1Chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <div class="chart-title">Garbage level</div>
+            <canvas id="sensor2Chart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let sensor1Chart, sensor2Chart;
+
+        async function fetchSensorData(date) {
+            const channelID = '2624178';
+            const apiKey = 'F3LXW1EJU8FFN0C0';
+            const startDate = new Date(date).toISOString().split('T')[0]; // YYYY-MM-DD
+            const endDate = new Date(date);
+            endDate.setDate(endDate.getDate() + 1);
+            const endDateString = endDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+            const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?api_key=${apiKey}&start=${startDate}T00:00:00&end=${endDateString}T00:00:00`;
+            console.log('Fetching data from:', url); // Debugging
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                const feeds = data.feeds;
+
+                if (!feeds || feeds.length === 0) {
+                    console.warn('No data available for the selected date.');
+                    return {
+                        timestamps: [],
+                        sensor1Data: [],
+                        sensor2Data: []
+                    };
+                }
+
+                const timestamps = feeds.map(feed => new Date(feed.created_at).toLocaleTimeString());
+                const sensor1Data = feeds.map(feed => parseFloat(feed.field1));
+                const sensor2Data = feeds.map(feed => parseFloat(feed.field2));
+
+                return { timestamps, sensor1Data, sensor2Data };
+            } catch (error) {
+                console.error('Error fetching sensor data:', error);
+                return {
+                    timestamps: [],
+                    sensor1Data: [],
+                    sensor2Data: []
+                };
+            }
+        }
+
+        function createChart(ctx, labels, data, label, color) {
+            return new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: color,
+                        borderColor: color,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 30,
+                                autoSkip: true
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Value'
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                callback: function(value) {
+                                    return value.toFixed(2); // Format y-axis labels
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function generateCharts(date) {
+            const { timestamps, sensor1Data, sensor2Data } = await fetchSensorData(date);
+
+            // Clear existing charts if they exist
+            if (sensor1Chart) sensor1Chart.destroy();
+            if (sensor2Chart) sensor2Chart.destroy();
+
+            if (timestamps.length === 0) {
+                alert('No data available for the selected date.');
+                return;
+            }
+
+            const ctx1 = document.getElementById('sensor1Chart').getContext('2d');
+            sensor1Chart = createChart(ctx1, timestamps, sensor1Data, 'Sensor 1 Data', '#004d40');
+
+            const ctx2 = document.getElementById('sensor2Chart').getContext('2d');
+            sensor2Chart = createChart(ctx2, timestamps, sensor2Data, 'Sensor 2 Data', '#00796b');
+        }
+
+        document.getElementById('loadData').addEventListener('click', () => {
+            const date = document.getElementById('datePicker').value;
+            if (date) {
+                generateCharts(date);
+            } else {
+                alert('Please select a date.');
+            }
+        });
+
+        window.onload = () => {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('datePicker').value = today;
+            generateCharts(today); // Default view
+        };
+    </script>
+</body>
+</html>
