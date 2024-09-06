@@ -22,11 +22,9 @@ const int distanceThreshold = 10; // Distance in cm to trigger the LED
 
 // Deep sleep parameters
 #define uS_TO_S_FACTOR 1000000  // Conversion factor for microseconds to seconds
-#define TIME_TO_SLEEP  60       // Time ESP8266 will go to sleep (in seconds)
+#define TIME_TO_SLEEP  3600       // Time ESP8266 will go to sleep (in seconds), set to one hour
 
 void setup() {
-  Serial.begin(115200);
-  delay(1000); // Allow time for Serial to start
 
   // Initialize sensor and LED pins
   pinMode(trigPin, OUTPUT);
@@ -37,16 +35,15 @@ void setup() {
   // Blink green LED three times to indicate the system is ready
   for (int i = 0; i < 3; i++) {
     digitalWrite(greenLedPin, HIGH);
-    delay(50);
+    delay(100);
     digitalWrite(greenLedPin, LOW);
-    delay(50);
+    delay(100);
   }
 
   // Read sensor values and send to ThingSpeak
   readAndSendData();
 
   // Prepare for deep sleep
-  Serial.println("Going to sleep now");
   delay(1000); // Delay to ensure the message is sent
   ESP.deepSleep(TIME_TO_SLEEP * uS_TO_S_FACTOR); // Enter deep sleep
 }
@@ -74,12 +71,6 @@ void readAndSendData() {
   duration = pulseIn(echoPin, HIGH);
   distance = duration * 0.034 / 2;
 
-  Serial.print("Gas Value: ");
-  Serial.print(gasValue);
-  Serial.print(" - Distance: ");
-  Serial.print(distance);
-  Serial.println(" cm");
-
   // Control LED based on sensor readings
   if (distance < distanceThreshold || gasValue > 300) {
     digitalWrite(ledPin, HIGH); // Turn LED on
@@ -89,7 +80,6 @@ void readAndSendData() {
 
 //indicate that sensor is giving expected readings
 if(gasValue > 5){
-  Serial.println("Sensor is working");
     for (int i = 0; i < 3; i++) {
       digitalWrite(greenLedPin, HIGH);
       delay(300);
@@ -100,7 +90,6 @@ if(gasValue > 5){
 
 //indicates that the sensor readings are not as expected (gas sensor)
 if (gasValue <= 5){
-  Serial.println("sensor not working");
    for (int i = 0; i < 10; i++) {
     digitalWrite(greenLedPin, HIGH);
     delay(300);
@@ -108,7 +97,7 @@ if (gasValue <= 5){
     delay(300);
   }
   while(1){
-    Serial.println("Doing nothing");
+    //Doing nothing, (an infinite loop that executes if the sensor isn't working)
   }
 }
 
@@ -118,23 +107,20 @@ if (gasValue <= 5){
 }
 
 void connectToWiFi() {
-  Serial.print("Connecting to Wi-Fi");
   WiFi.begin(ssid, password);
 
   int timeout = 0;
   while (WiFi.status() != WL_CONNECTED && timeout < 20) { // Timeout after 10 seconds
     delay(500);
-    Serial.print(".");
     timeout++;
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Connected to Wi-Fi");
     digitalWrite(greenLedPin, HIGH); // Indicate successful Wi-Fi connection
     delay(500);
     digitalWrite(greenLedPin, LOW);
   } else {
-    Serial.println("Failed to connect to Wi-Fi");
+    // add debug statement to indicate connection failure
   }
 }
 
@@ -156,13 +142,13 @@ void sendDataToThingSpeak(int gasValue, int distance) {
     int httpCode = http.GET();
     if (httpCode > 0) {
       String payload = http.getString();
-      Serial.println(httpCode);
-      Serial.println(payload);
-    } else {
-      Serial.println("Error in HTTP request");
+      }
+    else {
+      // add debug statement to indicate connection failure
     }
     http.end();
-  } else {
-    Serial.println("Unable to send data, Wi-Fi not connected");
+  } 
+  else {
+   // add debug statement to indicate connection failure
   }
 }
