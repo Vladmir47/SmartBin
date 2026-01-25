@@ -7,7 +7,7 @@ const char* password = "hfha7412";
 
 // ThingSpeak API
 const char* server = "http://api.thingspeak.com";
-const String apiKey = "CITEP7GRN32QTEVB";
+const String apiKey = "API_KEY";
 
 // Sensor pins
 const int mq135Pin = A0;  // A0 is the only ADC pin available on ESP8266 for MQ-135
