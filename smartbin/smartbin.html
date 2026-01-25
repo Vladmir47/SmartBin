@@ -99,8 +99,8 @@
         let sensor1Chart, sensor2Chart;
 
         async function fetchSensorData(date) {
-            const channelID = '2624178';
-            const apiKey = 'F3LXW1EJU8FFN0C0';
+            const channelID = 'CHANNEL_ID';
+            const apiKey = 'API_KEY';
             const startDate = new Date(date).toISOString().split('T')[0]; // YYYY-MM-DD
             const endDate = new Date(date);
             endDate.setDate(endDate.getDate() + 1);
@@ -238,3 +238,4 @@
     </script>
 </body>
 </html>
+
